@@ -1,1 +1,1 @@
-# VDB_Visualizer
+# OpenVDB_Visualizer
