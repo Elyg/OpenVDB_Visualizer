@@ -19,7 +19,7 @@ Still work in progress. Need to fix a few bugs, clean the code, then start addin
 ```
 git clone git@github.com:Elyg/OpenVDB_Visualizer.git
 cd OpenVDB_Visualizer/
-cmake VDB_Visualizer.pro
+cmake CmakeLists.txt
 make
 ./VDB_Visualizer
 ```
