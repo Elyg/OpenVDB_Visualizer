@@ -1,6 +1,6 @@
 # OpenVDB_Visualizer (WIP)
 This is my personal project for OpenVDB volume visualization with openGL, Qt5
-Still work in progress. Need to tidy everything up, support multiple grid loading, ui and wrap up everything
+Still work in progress. Need to tidy everything up, support multiple grid loading, ui and optimize
 
                                                                                                                   
 ![]()
