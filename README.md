@@ -1,10 +1,13 @@
 # OpenVDB_Visualizer (WIP)
 This is my personal project for OpenVDB volume visualization with openGL, Qt5
-Still work in progress. Need to tidy everything up, support multiple grid loading, ui and optimize
+Still work in progress. Need to fix a few bugs, clean the code, then start adding features like loading multiple grids, remapping values, ui etc.
 
                                                                                                                   
-![]()
+![https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/cloud.png](https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/cloud.png)
 
+![https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/pyro.png](https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/pyro.png)
+
+![https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/pig.png](https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/pig.png)
 # Library dependancies
 
  - OpenGL
