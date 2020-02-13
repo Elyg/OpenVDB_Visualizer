@@ -33,3 +33,5 @@
 
 # Reference lib
 libRef/
+build/
+CmakeLists.user
