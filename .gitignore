@@ -34,4 +34,4 @@
 # Reference lib
 libRef/
 build/
-CmakeLists.user
+CmakeLists.txt.user
