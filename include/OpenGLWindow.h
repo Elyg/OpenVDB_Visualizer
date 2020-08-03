@@ -18,12 +18,18 @@
 
 #include <memory>
 #include <iostream>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <numeric> 
 
 #define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/common.hpp> 
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/random.hpp>
 
 struct WinParams
 {
@@ -88,6 +94,9 @@ public:
   void mousePressEvent(QMouseEvent *_event) override;
   void mouseReleaseEvent(QMouseEvent *_event) override;
   void wheelEvent(QWheelEvent *_event) override;
+  
+  void getIntersectionPoints(std::vector<std::vector<glm::vec3>> &array, glm::mat4 view, int slices);
+  
 private:
   std::unique_ptr<Shader> m_shaderProgram;
   std::unique_ptr<Shader> m_shaderProgram2;
@@ -100,7 +109,10 @@ private:
   glm::mat4 m_projection;
   glm::mat4 m_view;
   glm::mat4 m_model;
-  
+  glm::vec2 m_viewportSize;
+  float m_aspectRatio;
+  glm::vec3 m_min;
+  glm::vec3 m_max;
   glm::vec3 m_mousePos;
   
   WinParams m_win;
@@ -108,6 +120,8 @@ private:
   GLuint m_textureId;
   GLuint m_frameBuffer;
   GLuint m_bfTexObj;
+  
+  int m_pop;
   
 };
 

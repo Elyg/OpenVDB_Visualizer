@@ -13,6 +13,8 @@
 #    include <openvdb/openvdb.h>
 #    include <openvdb/tools/DenseSparseTools.h>
 #    include <openvdb/tools/Dense.h>
+#    include <openvdb/tools/Statistics.h>
+#    include <openvdb/math/Stats.h>
 #    pragma pop_macro("Q_FOREACH")
 #    pragma pop_macro("foreach")
 #    pragma pop_macro("slots")
@@ -35,6 +37,8 @@ public:
   void getWorldSpaceVoxels(std::vector<float> &_vertices);
   inline std::shared_ptr<openvdb::tools::Dense<float,  openvdb::tools::MemoryLayout::LayoutXYZ>> getDenseGrid() {return m_denseGrid;}
   inline glm::vec3 getScale(){return m_scale;}
+  inline glm::vec3 getMin() { return m_min;}
+  inline glm::vec3 getMax() { return m_max;}
 private:
   openvdb::GridBase::Ptr m_density;
   //openvdb::tools::Dense<float> *m_denseDensity;

@@ -19,6 +19,9 @@ VDB::VDB(std::string _file)
     m_density = file.readGrid("density");
     openvdb::CoordBBox bbox = m_density->evalActiveVoxelBoundingBox();
     openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(m_density);
+    
+    openvdb::math::Extrema stats = openvdb::tools::extrema(grid->beginValueOn(), true);
+    stats.print();
     ///m_denseDensity = new openvdb::tools::Dense<float> (bbox);
     auto layout = openvdb::tools::MemoryLayout::LayoutXYZ;
     m_denseGrid = std::make_shared<openvdb::tools::Dense<float, openvdb::tools::MemoryLayout::LayoutXYZ>> (bbox, layout);

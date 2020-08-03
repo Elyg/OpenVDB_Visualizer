@@ -16,6 +16,9 @@ public:
   inline glm::mat4 getProjectionMat(){ return m_projection;}
   inline glm::mat4 getViewMat() {return m_view; }
   inline glm::vec3 getPos() {return m_pos;}
+  inline float getFov() {return m_fov;}
+  inline float getFocalLength() {return 1.0 / glm::tan(glm::pi<float>() / 180.0 * m_fov / 2.0);}
+  
 private:
   float m_fov = 45.0f;
   float m_near = 0.01f;

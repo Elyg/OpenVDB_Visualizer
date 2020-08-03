@@ -1,5 +1,207 @@
 #include "OpenGLWindow.h"
 
+void _print(glm::vec3 vec)
+{
+ std::cout << glm::to_string(vec) << std::endl;
+}
+
+template <typename T>
+std::vector<size_t> sort_indexes(const std::vector<T> &v) {
+
+  // initialize original index locations
+  std::vector<size_t> idx(v.size());
+  std::iota(idx.begin(), idx.end(), 0);
+
+  // sort indexes based on comparing values in v
+  // using std::stable_sort instead of std::sort
+  // to avoid unnecessary index re-orderings
+  // when v contains elements of equal values 
+  std::stable_sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+
+  return idx;
+}
+
+void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &array, glm::mat4 view, int slices)
+{
+  std::vector<glm::vec3> points 
+  {                                                                                                                                                                                                                           
+    glm::vec3(0.0f, 0.0f, 0.0f), //0
+    glm::vec3(0.0f, 0.0f, 1.0f), //1
+    glm::vec3(0.0f, 1.0f, 0.0f), //2
+    glm::vec3(0.0f, 1.0f, 1.0f), //3
+    glm::vec3(1.0f, 0.0f, 0.0f), //4
+    glm::vec3(1.0f, 0.0f, 1.0f), //5
+    glm::vec3(1.0f, 1.0f, 0.0f), //6
+    glm::vec3(1.0f, 1.0f, 1.0f)  //7
+  };
+  glm::mat3 camViewTM = glm::mat3(view);
+  //camViewTM = glm::mat3(1.0f);
+  //camViewTM = glm::rotate(glm::mat4(camViewTM), glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  //camViewTM = glm::rotate(glm::mat4(camViewTM), glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  for (auto &point : points)
+  {
+    point += glm::vec3(-0.5f,-0.5f,-0.5f);
+    point = camViewTM*point;
+  }
+
+  std::vector<std::vector<glm::vec3>> edges
+  {
+    std::vector<glm::vec3> {points[0], points[1]},
+    std::vector<glm::vec3> {points[1], points[5]},
+    std::vector<glm::vec3> {points[5], points[4]},
+    std::vector<glm::vec3> {points[4], points[0]},
+
+    std::vector<glm::vec3> {points[2], points[3]},
+    std::vector<glm::vec3> {points[3], points[7]},
+    std::vector<glm::vec3> {points[7], points[6]},
+    std::vector<glm::vec3> {points[6], points[2]},
+
+    std::vector<glm::vec3> {points[0], points[2]},
+    std::vector<glm::vec3> {points[1], points[3]},
+    std::vector<glm::vec3> {points[5], points[7]},
+    std::vector<glm::vec3> {points[4], points[6]}
+  }; 
+
+  float minz = points[0][2];
+  float maxz = 0;
+  for (auto &point : points)
+  {
+    minz = glm::min(minz, point[2]);
+    maxz = glm::max(maxz, point[2]);
+  }
+
+  float step = maxz-minz;
+  step /= float(slices)+1;
+
+  std::vector<std::vector<glm::vec3>> slicePoints;
+
+  for(int i=0; i<slices; ++i)
+  {
+      
+    glm::vec3 planeP = glm::vec3(0.0f, 0.0f , 0.0f);
+    glm::vec3 planeN = glm::vec3(0.0f, 0.0f, -1.0f);
+
+    float dt = step*float(i+1);
+    
+    //std::cout << "i: " << i << "delta: " << dt << std::endl;
+    
+    planeP[2] += minz;
+    planeP[2] += (maxz-minz)*dt;
+
+    std::vector<glm::vec3> intersectPoints;
+
+    for (auto &point : edges)
+    {
+      //std::cout << glm::to_string(point[0]) << "," << glm::to_string(point[1]) << std::endl;
+      glm::vec3 rayP = point[0];
+      glm::vec3 rayDir = glm::normalize(point[1]-point[0]);
+      //_print(rayDir);
+      
+      float ndotu = dot(rayDir, planeN);
+      if(glm::abs(ndotu) > 0.0001f)
+      {
+        glm::vec3 diff = rayP - planeP;
+        float prod1 = dot(diff, planeN);
+        float prod2 = dot(rayDir, planeN);
+        float prod3 = prod1/prod2;
+        glm::vec3 p = rayP - rayDir*prod3;
+        
+        float l = glm::length(point[1]-point[0]);
+        glm::vec3 pr = p-point[0];
+        float proj = dot(pr, rayDir);
+        proj = glm::clamp(proj, 0.0f, l);
+
+        glm::vec3 cp = point[0] + proj*rayDir;
+        if(glm::length(cp-p) < 0.0001f)
+        {
+          intersectPoints.push_back(p);
+          //_print(p);
+        }
+      }
+    }
+      std::cout << intersectPoints.size() << std::endl;
+      for(auto &pt : intersectPoints)
+      {
+        std::cout << "Unsorted Slice: " << i << " ";
+        _print(pt);
+      }
+    if(intersectPoints.size() > 0)
+    {
+      
+      //slicePoints.push_back(intersectPoints);
+      glm::vec3 avgPoint = glm::vec3(0.0f, 0.0f, 0.0f);
+      for (auto &intersectPoint : intersectPoints)
+      {
+        avgPoint += intersectPoint;
+      }
+      avgPoint /= float(intersectPoints.size());
+      
+      auto copyIntersectPoints = intersectPoints;
+      std::vector<float> angles;
+      for(auto &copyIntersectPoint : copyIntersectPoints)
+      {
+        
+        copyIntersectPoint -= avgPoint;
+        copyIntersectPoint[2] = 0.0f;
+        float angle = std::atan2(copyIntersectPoint[1], copyIntersectPoint[0]);
+        angles.push_back(angle);
+      }
+
+      std::vector<glm::vec3> sortedIntersectPoints = intersectPoints;
+      int j = 0;
+      auto indexes = sort_indexes(angles);
+      for(auto &index : indexes)
+      {
+        sortedIntersectPoints[j] = intersectPoints[index];
+        j++;
+      }
+
+      std::vector<glm::vec3> final;
+      if(sortedIntersectPoints.size() > 3)
+      {
+        //final.push_back(glm::inverse(camViewTM)*avgPoint);
+      
+      int f=0;
+      for (auto point : sortedIntersectPoints)
+      {
+        final.push_back(glm::inverse(camViewTM)*point);
+        if(f%2 == 0)
+        {
+          final.push_back(glm::inverse(camViewTM)*avgPoint);
+        }
+        
+        f++;
+      }
+      if(sortedIntersectPoints.size()%2==0)
+        {
+          final.push_back(glm::inverse(camViewTM)*avgPoint);
+        }
+      final.push_back(glm::inverse(camViewTM)*sortedIntersectPoints[0]);
+      }
+      else
+      {
+          for (auto point : sortedIntersectPoints)
+          {
+            final.push_back(glm::inverse(camViewTM)*point);
+          }
+      }
+      if(sortedIntersectPoints.size() > 3)
+      {
+        //final.push_back(sortedIntersectPoints[1]);
+      }
+      std::cout << final.size() << std::endl;
+      for(auto &pt : final)
+      {
+        std::cout << "Sorted Slice: " << i << " ";
+        _print(pt);
+      }
+      slicePoints.push_back(final);
+    } 
+  }
+  array = slicePoints;
+}
+
 
 OpenGLWindow::OpenGLWindow()
 {}
@@ -16,141 +218,70 @@ OpenGLWindow::~OpenGLWindow()
   std::cout<<"Cleaned VAO and VBO"<<std::endl;
 }
 
-// init the 2D texture for render backface 'bf' stands for backface
-GLuint OpenGLWindow::initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight)
-{
-  GLuint backFace2DTex;
-  glGenTextures(1, &backFace2DTex);
-  glBindTexture(GL_TEXTURE_2D, backFace2DTex);
-  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-  //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, bfTexWidth, bfTexHeight, 0, GL_RGBA, GL_FLOAT, NULL);
-  glBindTexture(GL_TEXTURE_2D, 0);
-  return backFace2DTex;
-}
-// init the framebuffer, the only framebuffer used in this program
-void OpenGLWindow::initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
-{
-  // create a depth buffer for our framebuffer
-  GLuint depthBuffer;
-  glGenRenderbuffers(1, &depthBuffer);
-  glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
-  //glRenderbufferStorageMultisample( GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, texWidth, texWidth);
-  //glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, texWidth, texHeight);
-  // attach the texture and the depth buffer to the framebuffer
-  glGenFramebuffers(1, &m_frameBuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texObj, 0);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
-  
-  GLenum complete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (complete != GL_FRAMEBUFFER_COMPLETE)
-    {
-      std::cout << "framebuffer is not complete" << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  std::cout << m_frameBuffer << std::endl;
-  glEnable(GL_DEPTH_TEST);    
-}
-//// init the framebuffer, the only framebuffer used in this program
-//void OpenGLWindow::initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight)
-//{
-//  // create a depth buffer for our framebuffer
-//  GLuint depthBuffer;
-//  glGenRenderbuffers(1, &depthBuffer);
-//  glBindRenderbuffer(GL_RENDERBUFFER, depthBuffer);
-//  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
-//  //glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT, texWidth, texHeight);
-//  // attach the texture and the depth buffer to the framebuffer
-//  glGenFramebuffers(1, &m_frameBuffer);
-//  glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
-//  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texObj, 0);
-//  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer);
-  
-//  GLenum complete = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-//  if (complete != GL_FRAMEBUFFER_COMPLETE)
-//    {
-//      std::cout << "framebuffer is not complete" << std::endl;
-//      exit(EXIT_FAILURE);
-//    }
-//  std::cout << m_frameBuffer << std::endl;
-//  glEnable(GL_DEPTH_TEST);    
-//}
 void OpenGLWindow::initializeGL()
 {
   // glad: load all OpenGL function pointers
   // ---------------------------------------
   gladLoadGL();
-  
   setFocus();
-  glEnable( GL_DEPTH_TEST );
-  glEnable(GL_MULTISAMPLE);
   
   // need to reformat this
   m_shaderProgram.reset(new Shader("../../shaders/shader.vert", "../../shaders/shader.frag"));
   m_shaderProgram2.reset(new Shader("../../shaders/shaderSimple.vert", "../../shaders/shaderSimple.frag"));
-  m_shaderProgram3.reset(new Shader("../../shaders/backface.vert", "../../shaders/backface.frag"));
+  //m_shaderProgram3.reset(new Shader("../../shaders/backface.vert", "../../shaders/backface.frag"));
   
   // loding in a vdb grid
-  std::string path = "../../data/cloud.vdb";
+  std::string path = "../../data/pig.vdb";
   std::shared_ptr<VDB> vdb = std::make_shared<VDB>(path);
+  m_min = vdb->getMin();
+  m_max = vdb->getMax();
+
+//  GLfloat vertices[24] = {
+//    0.0, 0.0, 0.0, //0
+//    0.0, 0.0, 1.0, //1
+//    0.0, 1.0, 0.0, //2
+//    0.0, 1.0, 1.0, //3
+//    1.0, 0.0, 0.0, //4
+//    1.0, 0.0, 1.0, //5
+//    1.0, 1.0, 0.0, //6
+//    1.0, 1.0, 1.0  //7
+//  };
+  
+  
+//  GLuint elements[36] = {
+//    1,5,7,
+//    7,3,1,
+//    0,2,6,
+//    6,4,0,
+//    0,1,3,
+//    3,2,0,
+//    7,5,4,
+//    4,6,7,
+//    2,3,7,
+//    7,6,2,
+//    1,0,4,
+//    4,5,1
+//  };
+//  glGenVertexArrays(1, &m_VAO);
+//  glGenBuffers(1, &m_VBO);
+//  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+//  glBindVertexArray(m_VAO);
+  
+//  glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+//  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+//  GLuint ebo;
+//  glGenBuffers(1, &ebo);
 
   
-  GLfloat vertices[24] = {
-    0.0, 0.0, 0.0,
-    0.0, 0.0, 1.0,
-    0.0, 1.0, 0.0,
-    0.0, 1.0, 1.0,
-    1.0, 0.0, 0.0,
-    1.0, 0.0, 1.0,
-    1.0, 1.0, 0.0,
-    1.0, 1.0, 1.0
-  };
+//  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+//  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
+  
+//  GLuint posAttrib = glGetAttribLocation(m_shaderProgram2->getId(), "position");
+//  glEnableVertexAttribArray(posAttrib);
+//  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
   
   
-  GLuint elements[36] = {
-    1,5,7,
-    7,3,1,
-    0,2,6,
-    6,4,0,
-    0,1,3,
-    3,2,0,
-    7,5,4,
-    4,6,7,
-    2,3,7,
-    7,6,2,
-    1,0,4,
-    4,5,1
-  };
-  glGenVertexArrays(1, &m_VAO);
-  glGenBuffers(1, &m_VBO);
-  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-  glBindVertexArray(m_VAO);
-  
-  glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  GLuint ebo;
-  glGenBuffers(1, &ebo);
-
-  
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-  
-  GLuint posAttrib = glGetAttribLocation(m_shaderProgram->getId(), "position");
-  glEnableVertexAttribArray(posAttrib);
-  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-  
-  posAttrib = glGetAttribLocation(m_shaderProgram2->getId(), "position");
-  glEnableVertexAttribArray(posAttrib);
-  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-  
-  posAttrib = glGetAttribLocation(m_shaderProgram3->getId(), "position");
-  glEnableVertexAttribArray(posAttrib);
-  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
   int XDIM = vdb->getDenseGrid()->bbox().dim()[0];
   int YDIM = vdb->getDenseGrid()->bbox().dim()[1];
   int ZDIM = vdb->getDenseGrid()->bbox().dim()[2];
@@ -158,80 +289,75 @@ void OpenGLWindow::initializeGL()
   std::cout << XDIM <<std::endl;
   std::cout << YDIM <<std::endl;
   std::cout << ZDIM <<std::endl;
-  
-  
+
   //load data into a 3D texture
-  glGenTextures(1, &m_textureId);
+  glGenTextures(0, &m_textureId);
   glBindTexture(GL_TEXTURE_3D, m_textureId);
   
   // set the texture parameters GL_CLAMP_TO_BORDER
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  
+  glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexImage3D(GL_TEXTURE_3D,0,GL_R32F,XDIM,YDIM,ZDIM,0,GL_RED,GL_FLOAT,vdb->getDenseGrid()->data());
-  
+  glBindTexture(GL_TEXTURE_3D, 0);
+  //glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
   // camera
   m_camera = new Camera(glm::vec3(0.0f, 0.0f, -0.3f));
   float aspectRatio = (float(m_win.width)/float(m_win.height));
   m_camera->computeProjectionMat(aspectRatio);
   m_projection = m_camera->getProjectionMat();
   m_view = m_camera->getViewMat();
-  m_model = glm::scale(glm::mat4( 1.0f ), vdb->getScale());
-
+  //m_model = glm::scale(glm::mat4( 1.0f ), vdb->getScale());
+  m_model = glm::mat4(1.0f);
   std::cout << glm::to_string(m_model) << std::endl;
   
-  m_shaderProgram->use();
-  m_shaderProgram->setInt("volume", m_textureId);
-  m_shaderProgram->setVec2("ScreenSize", glm::vec2((float)m_win.width, (float)m_win.height));
-
-  GLint qt_buffer;
-  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &qt_buffer);
-  std::cout << qt_buffer << std::endl;
-  //glActiveTexture(GL_TEXTURE2);
-  m_bfTexObj = this->initFace2DTex(m_win.width, m_win.height);
-  //glBindTexture(GL_TEXTURE_2D, 0);
-  std::cout << m_bfTexObj << std::endl;
-  m_shaderProgram->setInt("ExitPoints", m_bfTexObj);
-  this->initFrameBuffer(m_bfTexObj, m_win.width, m_win.width);
+  m_shaderProgram2->use();
+  m_shaderProgram2->setInt("volume", m_textureId);
+  
+  //m_min = glm::vec3(0);
+  //m_max = vdb->getScale();
+  
+  //std::cout << glm::to_string(vdb->getScale()) << std::endl;
+  //std::cout << glm::to_string(vdb->getScale()) << std::endl;
+  
+  m_pop = 0;
+  m_wireframe = false;
   startTimer(60);
 
 }
 
 void OpenGLWindow::resizeGL(int _w, int _h)
 {
-
   m_win.width  = static_cast<int>( _w * devicePixelRatio() );
   m_win.height = static_cast<int>( _h * devicePixelRatio() );
-  float aspectRatio = (float(m_win.width)/float(m_win.height));
-  m_camera->computeProjectionMat(aspectRatio);
-  m_projection = m_camera->getProjectionMat();
+  //float aspectRatio = (float(m_win.width)/float(m_win.height));
   
-  glDeleteTextures(1, &m_bfTexObj);
-  glDeleteFramebuffers(1, &m_frameBuffer);
-  m_bfTexObj = this->initFace2DTex(m_win.width, m_win.height);
-  m_shaderProgram->setInt("ExitPoints", m_bfTexObj);
-  this->initFrameBuffer(m_bfTexObj, m_win.width, m_win.width);
+  //m_camera->computeProjectionMat(aspectRatio);
+  //m_projection = m_camera->getProjectionMat();
+  
+  //m_viewportSize = glm::vec2(m_win.width, m_win.height);
+  //m_aspectRatio = aspectRatio;
+  
+  //m_shaderProgram->use();
+  //m_shaderProgram->setFloat("aspect_ratio", m_aspectRatio);
+  //m_shaderProgram->setVec2("viewport_size", m_viewportSize);
 }
 
 
 void OpenGLWindow::paintGL()
 {
-  //glEnable(GL_MULTISAMPLE);
-  glEnable(GL_DEPTH_TEST);
-  glFrontFace(GL_CCW);
-  //glEnable(GL_TEXTURE_3D);
   glEnable(GL_BLEND);
-  glEnable(GL_POLYGON_SMOOTH);
-  //glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-  //wcglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-  //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  //glDisable(GL_MULTISAMPLE);
-  //GLint qt_buffer;
-  //glGetIntegerv(GL_FRAMEBUFFER_BINDING, &qt_buffer);
+  //glEnable(GL_ALPHA_TEST);
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
+ //glEnable(GL_MULTISAMPLE);
+  glViewport(0, 0, m_win.width, m_win.height);
+  glClearColor(0.2f,0.2f,0.2f,1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_3D, m_textureId);
+  
   glm::mat4 mouseRotX = glm::mat4(1);
   glm::mat4 mouseRotY = glm::mat4(1);
   mouseRotX = glm::rotate(mouseRotX, glm::radians(float(m_win.spinXFace)*0.2f), glm::vec3(1,0,0));
@@ -239,49 +365,68 @@ void OpenGLWindow::paintGL()
   glm::mat4 m_mouseTm = (mouseRotX*mouseRotY);
   glm::mat4 camPosTm = glm::translate(glm::mat4(1), m_mousePos+m_camera->getPos());
   
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_frameBuffer);
-  glDisable(GL_MULTISAMPLE);
-  //glEnable(GL_POLYGON_SMOOTH);
-  //glEnable(GL_MULTISAMPLE);
-  glViewport(0, 0, m_win.width, m_win.height);
-  glClearColor(0.2f,0.2f,0.2f,1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glActiveTexture(GL_TEXTURE2);
-  glBindTexture(GL_TEXTURE_2D, m_bfTexObj);
-  m_shaderProgram3->use();
-  m_shaderProgram3->setMat4("projection", m_projection);
-  m_shaderProgram3->setMat4("view", camPosTm*m_view*m_mouseTm);
-  m_shaderProgram3->setMat4("model", m_model);
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_FRONT);
-  glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-  glDisable(GL_CULL_FACE);
+  int slices = pow(2, 3); //9
   
-  //https://stackoverflow.com/questions/42878216/opengl-how-to-draw-to-a-multisample-framebuffer-and-then-use-the-result-as-a-n
-  glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
-  //glDisable(GL_MULTISAMPLE);
-  //glEnable(GL_POLYGON_SMOOTH);
-  glEnable(GL_MULTISAMPLE);
-  glViewport(0, 0, m_win.width, m_win.height);
-  glClearColor(0.2f,0.2f,0.2f,1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glActiveTexture(GL_TEXTURE1);
-  glBindTexture(GL_TEXTURE_3D, m_textureId);
-  m_shaderProgram->use();
-  m_shaderProgram->setMat4("projection", m_projection);
-  m_shaderProgram->setMat4("view", camPosTm*m_view*m_mouseTm);
-  //glm::mat4 scale = glm::scale(glm::mat4(1), glm::vec3(0.9,0.9,0.9));
-  m_shaderProgram->setMat4("model", m_model);
-  m_shaderProgram->setInt("ExitPoints", m_bfTexObj);
-  m_shaderProgram->setInt("volume", m_textureId);
-  m_shaderProgram->setVec2("ScreenSize", glm::vec2((float)m_win.width, (float)m_win.height));
-  //m_shaderProgram->setVec2("ScreenSize", glm::vec2(2048, 2048));
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
-  glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-  glDisable(GL_CULL_FACE);
-  glUseProgram(0);
+  m_shaderProgram2->use();
+  m_shaderProgram2->setMat4("projection", m_projection);
+  m_shaderProgram2->setMat4("view", camPosTm*m_view*m_mouseTm);
+  m_shaderProgram2->setMat4("model", m_model);
   
+  m_shaderProgram->setFloat("slices",float(slices));
+  //m_shaderProgram2->setMat4("projection", m_projection);
+  //m_shaderProgram2->setMat4("view", camPosTm*m_view*m_mouseTm);
+  //m_shaderProgram2->setMat4("model", m_model);
+  
+  //m_shaderProgram->setFloat("focal_length", m_camera->getFocalLength());
+  //m_shaderProgram->setFloat("aspect_ratio", m_aspectRatio);
+  //m_shaderProgram->setVec2("viewport_size", m_viewportSize);
+  //m_shaderProgram->setVec3("ray_origin", m_mousePos+m_camera->getPos());
+  //m_shaderProgram->setVec3("top", m_max);
+  //m_shaderProgram->setVec3("bottom", m_min);
+  
+  //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+  //glDisableVertexAttribArray(m_VAO);
+  std::vector<std::vector<glm::vec3>> intersectionSlices;
+  getIntersectionPoints(intersectionSlices, camPosTm*m_view*m_mouseTm, slices);
+  int seed = 0;
+  for(auto &intersectionPoints : intersectionSlices)
+  {
+   seed++;
+   glm::vec3 cd = glm::ballRand(1.0);
+   std::srand(seed*5);
+   m_shaderProgram2->setVec3("color", glm::vec3(cd));
+   
+   for(int i=0; i<m_pop; ++i)
+     {
+       
+       //intersectionPoints.pop_back();
+     }
+   
+    //int sizeVertices = sizeof(intersectionPoints) / sizeof(glm::vec3);
+    //std::cout << sizeVertices << std::endl;
+    unsigned int VAO;
+    unsigned int VBO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glGenBuffers(1, &VBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, intersectionPoints.size() * sizeof(glm::vec3), intersectionPoints.data(), GL_STATIC_DRAW);
+  
+    GLuint posAttrib = glGetAttribLocation(m_shaderProgram2->getId(), "position");
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    //glPointSize(3.0f);
+    glDrawArrays(GL_POINTS, 0, intersectionPoints.size());
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, intersectionPoints.size());
+    //glDisableVertexAttribArray(VAO);
+  }
+
+   //glEnableVertexAttribArray(m_VAO);
+
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   if(m_wireframe == true)
     {
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -300,9 +445,11 @@ void OpenGLWindow::keyPressEvent(QKeyEvent *_event)
     {
     case Qt::Key_W :
       m_wireframe = true;
+      m_pop += 1;
       std::cout<<'W'<<std::endl; break;
     case Qt::Key_C :
       m_wireframe = false;
+      m_pop -= 1;
       std::cout<<'C'<<std::endl; break;
     case Qt::Key_Space :
       m_mousePos = glm::vec3(0);
