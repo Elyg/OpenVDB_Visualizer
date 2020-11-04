@@ -36,9 +36,7 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
     glm::vec3(1.0f, 1.0f, 1.0f)  //7
   };
   glm::mat3 camViewTM = glm::mat3(view);
-  //camViewTM = glm::mat3(1.0f);
-  //camViewTM = glm::rotate(glm::mat4(camViewTM), glm::radians(-45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  //camViewTM = glm::rotate(glm::mat4(camViewTM), glm::radians(-45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
   for (auto &point : points)
   {
     point += glm::vec3(-0.5f,-0.5f,-0.5f);
@@ -83,9 +81,7 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
     glm::vec3 planeN = glm::vec3(0.0f, 0.0f, -1.0f);
 
     float dt = step*float(i+1);
-    
-    //std::cout << "i: " << i << "delta: " << dt << std::endl;
-    
+
     planeP[2] += minz;
     planeP[2] += (maxz-minz)*dt;
 
@@ -93,10 +89,8 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
 
     for (auto &point : edges)
     {
-      //std::cout << glm::to_string(point[0]) << "," << glm::to_string(point[1]) << std::endl;
       glm::vec3 rayP = point[0];
       glm::vec3 rayDir = glm::normalize(point[1]-point[0]);
-      //_print(rayDir);
       
       float ndotu = dot(rayDir, planeN);
       if(glm::abs(ndotu) > 0.0001f)
@@ -120,12 +114,6 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
         }
       }
     }
-      std::cout << intersectPoints.size() << std::endl;
-      for(auto &pt : intersectPoints)
-      {
-        std::cout << "Unsorted Slice: " << i << " ";
-        _print(pt);
-      }
     if(intersectPoints.size() > 0)
     {
       
@@ -137,47 +125,36 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
       }
       avgPoint /= float(intersectPoints.size());
       
-      auto copyIntersectPoints = intersectPoints;
+      //auto copyIntersectPoints = intersectPoints;
       std::vector<float> angles;
-      for(auto &copyIntersectPoint : copyIntersectPoints)
+      for(auto copyIntersectPoint : intersectPoints)
       {
-        
         copyIntersectPoint -= avgPoint;
         copyIntersectPoint[2] = 0.0f;
         float angle = std::atan2(copyIntersectPoint[1], copyIntersectPoint[0]);
         angles.push_back(angle);
       }
 
-      std::vector<glm::vec3> sortedIntersectPoints = intersectPoints;
+      std::vector<glm::vec3> sortedIntersectPoints (intersectPoints.size());
       int j = 0;
-      auto indexes = sort_indexes(angles);
-      for(auto &index : indexes)
+      for(auto &index : sort_indexes(angles))
       {
         sortedIntersectPoints[j] = intersectPoints[index];
         j++;
       }
-
+      std::reverse(sortedIntersectPoints.begin(), sortedIntersectPoints.end());
       std::vector<glm::vec3> final;
       if(sortedIntersectPoints.size() > 3)
       {
-        //final.push_back(glm::inverse(camViewTM)*avgPoint);
-      
-      int f=0;
-      for (auto point : sortedIntersectPoints)
-      {
-        final.push_back(glm::inverse(camViewTM)*point);
-        if(f%2 == 0)
-        {
-          final.push_back(glm::inverse(camViewTM)*avgPoint);
-        }
+        final.push_back(glm::inverse(camViewTM)*avgPoint);
         
-        f++;
-      }
-      if(sortedIntersectPoints.size()%2==0)
+        int f=0;
+        for (auto &point : sortedIntersectPoints)
         {
-          final.push_back(glm::inverse(camViewTM)*avgPoint);
+          f++;
+          final.push_back(glm::inverse(camViewTM)*point);
         }
-      final.push_back(glm::inverse(camViewTM)*sortedIntersectPoints[0]);
+        final.push_back(glm::inverse(camViewTM)*sortedIntersectPoints[0]);
       }
       else
       {
@@ -185,16 +162,6 @@ void OpenGLWindow::getIntersectionPoints(std::vector<std::vector<glm::vec3>> &ar
           {
             final.push_back(glm::inverse(camViewTM)*point);
           }
-      }
-      if(sortedIntersectPoints.size() > 3)
-      {
-        //final.push_back(sortedIntersectPoints[1]);
-      }
-      std::cout << final.size() << std::endl;
-      for(auto &pt : final)
-      {
-        std::cout << "Sorted Slice: " << i << " ";
-        _print(pt);
       }
       slicePoints.push_back(final);
     } 
@@ -218,80 +185,74 @@ OpenGLWindow::~OpenGLWindow()
   std::cout<<"Cleaned VAO and VBO"<<std::endl;
 }
 
-void OpenGLWindow::initializeGL()
+void OpenGLWindow::setRampWidget(QColorRampEditor *widget)
 {
-  // glad: load all OpenGL function pointers
-  // ---------------------------------------
-  gladLoadGL();
-  setFocus();
-  
-  // need to reformat this
-  m_shaderProgram.reset(new Shader("../../shaders/shader.vert", "../../shaders/shader.frag"));
-  m_shaderProgram2.reset(new Shader("../../shaders/shaderSimple.vert", "../../shaders/shaderSimple.frag"));
-  //m_shaderProgram3.reset(new Shader("../../shaders/backface.vert", "../../shaders/backface.frag"));
-  
+  m_colorWidget = widget;
+  setRampColorTable();
+}
+
+void OpenGLWindow::fitMinValuesChanged(double min)
+{
+  m_rampMin = float(min);//.toFloat();
+  std::cout<<"Min: "<<m_rampMin<<std::endl;
+}
+void OpenGLWindow::fitMaxValuesChanged(double max)
+{
+  m_rampMax = float(max);//.toFloat();
+  std::cout<<"Max: "<<m_rampMax<<std::endl;
+}
+void OpenGLWindow::slicesChanged(int slices)
+{
+  m_slices = slices;//.toFloat();
+  std::cout<<"Slices: "<<m_slices<<std::endl;
+}
+
+void OpenGLWindow::densityValuesChanged(double densityMulti)
+{
+  m_densityMulti = densityMulti;
+  std::cout<<"Density Multi: x"<<m_densityMulti<<std::endl;
+}
+
+void OpenGLWindow::vdbPathChanged(QString path)
+{
+  std::ifstream ifile(path.toStdString());
+  if(ifile)
+  {
+    updateVDB(path.toStdString());
+    std::cout<<"New path: "<<path.toStdString()<<std::endl;
+  }
+  else
+  {
+    std::cout<<"File does not exist"<<std::endl;
+  }
+}
+
+void OpenGLWindow::setRampColorTable()
+{
+  m_ctable = m_colorWidget->getColorTable();
+}
+
+void OpenGLWindow::initVDB(std::string path)
+{
   // loding in a vdb grid
-  std::string path = "../../data/pig.vdb";
+  //std::string path = "../../data/pig2.vdb";
   std::shared_ptr<VDB> vdb = std::make_shared<VDB>(path);
   m_min = vdb->getMin();
   m_max = vdb->getMax();
 
-//  GLfloat vertices[24] = {
-//    0.0, 0.0, 0.0, //0
-//    0.0, 0.0, 1.0, //1
-//    0.0, 1.0, 0.0, //2
-//    0.0, 1.0, 1.0, //3
-//    1.0, 0.0, 0.0, //4
-//    1.0, 0.0, 1.0, //5
-//    1.0, 1.0, 0.0, //6
-//    1.0, 1.0, 1.0  //7
-//  };
-  
-  
-//  GLuint elements[36] = {
-//    1,5,7,
-//    7,3,1,
-//    0,2,6,
-//    6,4,0,
-//    0,1,3,
-//    3,2,0,
-//    7,5,4,
-//    4,6,7,
-//    2,3,7,
-//    7,6,2,
-//    1,0,4,
-//    4,5,1
-//  };
-//  glGenVertexArrays(1, &m_VAO);
-//  glGenBuffers(1, &m_VBO);
-//  // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-//  glBindVertexArray(m_VAO);
-  
-//  glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-//  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-//  GLuint ebo;
-//  glGenBuffers(1, &ebo);
-
-  
-//  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-//  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-  
-//  GLuint posAttrib = glGetAttribLocation(m_shaderProgram2->getId(), "position");
-//  glEnableVertexAttribArray(posAttrib);
-//  glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-  
-  
   int XDIM = vdb->getDenseGrid()->bbox().dim()[0];
   int YDIM = vdb->getDenseGrid()->bbox().dim()[1];
   int ZDIM = vdb->getDenseGrid()->bbox().dim()[2];
+  
+  m_maxDim = std::max(XDIM,YDIM);
+  m_maxDim = std::max(m_maxDim, ZDIM);
   
   std::cout << XDIM <<std::endl;
   std::cout << YDIM <<std::endl;
   std::cout << ZDIM <<std::endl;
 
   //load data into a 3D texture
-  glGenTextures(0, &m_textureId);
+  glGenTextures(1, &m_textureId);
   glBindTexture(GL_TEXTURE_3D, m_textureId);
   
   // set the texture parameters GL_CLAMP_TO_BORDER
@@ -301,8 +262,64 @@ void OpenGLWindow::initializeGL()
   glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameterf(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexImage3D(GL_TEXTURE_3D,0,GL_R32F,XDIM,YDIM,ZDIM,0,GL_RED,GL_FLOAT,vdb->getDenseGrid()->data());
-  glBindTexture(GL_TEXTURE_3D, 0);
-  //glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+  m_shaderProgram2->use();
+  m_shaderProgram2->setInt("volume", 0);
+}
+
+void OpenGLWindow::updateVDB(std::string path)
+{
+  
+  std::shared_ptr<VDB> vdb = std::make_shared<VDB>(path);
+  m_min = vdb->getMin();
+  m_max = vdb->getMax();
+
+  int XDIM = vdb->getDenseGrid()->bbox().dim()[0];
+  int YDIM = vdb->getDenseGrid()->bbox().dim()[1];
+  int ZDIM = vdb->getDenseGrid()->bbox().dim()[2];
+  
+  m_maxDim = std::max(XDIM,YDIM);
+  m_maxDim = std::max(m_maxDim, ZDIM);
+  
+  std::cout << XDIM <<std::endl;
+  std::cout << YDIM <<std::endl;
+  std::cout << ZDIM <<std::endl;
+  
+  std::cout<<m_textureId<<std::endl;
+  
+  //glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_3D, m_textureId);
+  glTexImage3D(GL_TEXTURE_3D,0,GL_R32F,XDIM,YDIM,ZDIM,0,GL_RED,GL_FLOAT,vdb->getDenseGrid()->data());
+  m_shaderProgram2->use();
+  m_shaderProgram2->setInt("volume", 0);
+  update();
+  std::cout<<m_textureId<<std::endl;
+}
+
+void OpenGLWindow::initializeGL()
+{
+  // glad: load all OpenGL function pointers
+  // ---------------------------------------
+  gladLoadGL();
+  setFocus();
+  
+  // need to reformat this
+  m_shaderProgram.reset(new Shader("../../shaders/debug.vert", "../../shaders/debug.frag"));
+  m_shaderProgram2.reset(new Shader("../../shaders/shaderSimple.vert", "../../shaders/shaderSimple.frag"));
+  
+  initVDB("../../data/pig2.vdb");
+  
+  //load data into a 3D texture
+  glGenTextures(1, &m_transferTextureId);
+  glBindTexture(GL_TEXTURE_1D, m_transferTextureId);
+  
+  // set the texture parameters GL_CLAMP_TO_BORDER
+  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+  glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexImage1D(GL_TEXTURE_1D,0,GL_RGB32F,256,0,GL_RGB,GL_FLOAT, m_ctable.data());
+  
+  m_shaderProgram2->setInt("transfer", 1);
+  
   // camera
   m_camera = new Camera(glm::vec3(0.0f, 0.0f, -0.3f));
   float aspectRatio = (float(m_win.width)/float(m_win.height));
@@ -313,17 +330,12 @@ void OpenGLWindow::initializeGL()
   m_model = glm::mat4(1.0f);
   std::cout << glm::to_string(m_model) << std::endl;
   
-  m_shaderProgram2->use();
-  m_shaderProgram2->setInt("volume", m_textureId);
-  
-  //m_min = glm::vec3(0);
-  //m_max = vdb->getScale();
-  
-  //std::cout << glm::to_string(vdb->getScale()) << std::endl;
-  //std::cout << glm::to_string(vdb->getScale()) << std::endl;
-  
   m_pop = 0;
+  m_slices = pow(2, 8);
   m_wireframe = false;
+  m_rampMin = 0;
+  m_rampMax = 1;
+  m_densityMulti = 0.1f;
   startTimer(60);
 
 }
@@ -332,31 +344,16 @@ void OpenGLWindow::resizeGL(int _w, int _h)
 {
   m_win.width  = static_cast<int>( _w * devicePixelRatio() );
   m_win.height = static_cast<int>( _h * devicePixelRatio() );
-  //float aspectRatio = (float(m_win.width)/float(m_win.height));
-  
-  //m_camera->computeProjectionMat(aspectRatio);
-  //m_projection = m_camera->getProjectionMat();
-  
-  //m_viewportSize = glm::vec2(m_win.width, m_win.height);
-  //m_aspectRatio = aspectRatio;
-  
-  //m_shaderProgram->use();
-  //m_shaderProgram->setFloat("aspect_ratio", m_aspectRatio);
-  //m_shaderProgram->setVec2("viewport_size", m_viewportSize);
 }
-
 
 void OpenGLWindow::paintGL()
 {
   glEnable(GL_BLEND);
-  //glEnable(GL_ALPHA_TEST);
-  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA );
- //glEnable(GL_MULTISAMPLE);
+  glBlendEquation(GL_FUNC_ADD);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
   glViewport(0, 0, m_win.width, m_win.height);
-  glClearColor(0.2f,0.2f,0.2f,1.0f);
+  glClearColor(0.3f,0.3f,0.3f,1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glActiveTexture(GL_TEXTURE0);
-  glBindTexture(GL_TEXTURE_3D, m_textureId);
   
   glm::mat4 mouseRotX = glm::mat4(1);
   glm::mat4 mouseRotY = glm::mat4(1);
@@ -365,45 +362,60 @@ void OpenGLWindow::paintGL()
   glm::mat4 m_mouseTm = (mouseRotX*mouseRotY);
   glm::mat4 camPosTm = glm::translate(glm::mat4(1), m_mousePos+m_camera->getPos());
   
-  int slices = pow(2, 3); //9
   
-  m_shaderProgram2->use();
-  m_shaderProgram2->setMat4("projection", m_projection);
-  m_shaderProgram2->setMat4("view", camPosTm*m_view*m_mouseTm);
-  m_shaderProgram2->setMat4("model", m_model);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_3D, m_textureId);
   
-  m_shaderProgram->setFloat("slices",float(slices));
-  //m_shaderProgram2->setMat4("projection", m_projection);
-  //m_shaderProgram2->setMat4("view", camPosTm*m_view*m_mouseTm);
-  //m_shaderProgram2->setMat4("model", m_model);
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_1D, m_transferTextureId);
   
-  //m_shaderProgram->setFloat("focal_length", m_camera->getFocalLength());
-  //m_shaderProgram->setFloat("aspect_ratio", m_aspectRatio);
-  //m_shaderProgram->setVec2("viewport_size", m_viewportSize);
-  //m_shaderProgram->setVec3("ray_origin", m_mousePos+m_camera->getPos());
-  //m_shaderProgram->setVec3("top", m_max);
-  //m_shaderProgram->setVec3("bottom", m_min);
-  
-  //glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
-  //glDisableVertexAttribArray(m_VAO);
+  setRampColorTable();
+  glTexImage1D(GL_TEXTURE_1D,0,GL_RGB32F,256,0,GL_RGB,GL_FLOAT, m_ctable.data());
+
+  if(m_wireframe == false)
+  {
+    m_shaderProgram2->use();
+    m_shaderProgram2->setMat4("projection", m_projection);
+    m_shaderProgram2->setMat4("view", camPosTm*m_view*m_mouseTm);
+    m_shaderProgram2->setMat4("model", m_model);
+    m_shaderProgram2->setFloat("slices",float(m_slices));
+    m_shaderProgram2->setFloat("maxDim",float(m_maxDim));
+    m_shaderProgram2->setFloat("min",float(m_rampMin));
+    m_shaderProgram2->setFloat("max",float(m_rampMax));
+    m_shaderProgram2->setFloat("densityMulti",float(m_densityMulti));
+  }
+  else
+  {
+    m_shaderProgram->use();
+    m_shaderProgram->setMat4("projection", m_projection);
+    m_shaderProgram->setMat4("view", camPosTm*m_view*m_mouseTm);
+    m_shaderProgram->setMat4("model", m_model);
+    m_shaderProgram->setFloat("slices",float(m_slices));
+    m_shaderProgram->setFloat("maxDim",float(m_maxDim));
+    m_shaderProgram->setFloat("min",float(m_rampMin));
+    m_shaderProgram->setFloat("max",float(m_rampMax));
+  }
+
   std::vector<std::vector<glm::vec3>> intersectionSlices;
-  getIntersectionPoints(intersectionSlices, camPosTm*m_view*m_mouseTm, slices);
+  getIntersectionPoints(intersectionSlices, camPosTm*m_view*m_mouseTm, m_slices);
   int seed = 0;
   for(auto &intersectionPoints : intersectionSlices)
   {
    seed++;
    glm::vec3 cd = glm::ballRand(1.0);
+   cd = glm::vec3(seed)/glm::vec3(m_slices);
    std::srand(seed*5);
-   m_shaderProgram2->setVec3("color", glm::vec3(cd));
-   
-   for(int i=0; i<m_pop; ++i)
-     {
-       
-       //intersectionPoints.pop_back();
-     }
-   
-    //int sizeVertices = sizeof(intersectionPoints) / sizeof(glm::vec3);
-    //std::cout << sizeVertices << std::endl;
+   if(m_wireframe == false)
+   {
+     m_shaderProgram2->setVec3("color", glm::vec3(cd));
+     m_shaderProgram2->setFloat("slice", float(seed));
+   }
+   else
+   {
+     m_shaderProgram->setVec3("color", glm::vec3(cd));
+     m_shaderProgram->setFloat("slice", float(seed));
+   }
+
     unsigned int VAO;
     unsigned int VBO;
     glGenVertexArrays(1, &VAO);
@@ -413,30 +425,16 @@ void OpenGLWindow::paintGL()
     glBindVertexArray(VAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, intersectionPoints.size() * sizeof(glm::vec3), intersectionPoints.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, intersectionPoints.size() * sizeof(glm::vec3), intersectionPoints.data(), GL_DYNAMIC_DRAW);
   
     GLuint posAttrib = glGetAttribLocation(m_shaderProgram2->getId(), "position");
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     //glPointSize(3.0f);
-    glDrawArrays(GL_POINTS, 0, intersectionPoints.size());
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, intersectionPoints.size());
-    //glDisableVertexAttribArray(VAO);
+    //glDrawArrays(GL_POINTS, 0, intersectionPoints.size());
+    glDrawArrays(GL_TRIANGLE_FAN, 0, intersectionPoints.size());
+
   }
-
-   //glEnableVertexAttribArray(m_VAO);
-
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  if(m_wireframe == true)
-    {
-      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    }
-  else
-    {
-      glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-    }
-  
-  
 }
 
 void OpenGLWindow::keyPressEvent(QKeyEvent *_event)
@@ -533,7 +531,7 @@ void OpenGLWindow::mouseReleaseEvent( QMouseEvent* _event )
 //----------------------------------------------------------------------------------------------------------------------
 void OpenGLWindow::wheelEvent( QWheelEvent* _event )
 {
-  float speed = 10;
+  float speed = 2;
   if ( _event->delta() > 0 )
     {
       m_mousePos.z -= 0.1f*speed;

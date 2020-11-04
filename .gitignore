@@ -35,3 +35,4 @@
 libRef/
 build/
 CmakeLists.txt.user
+data/wdas*

@@ -12,9 +12,12 @@
 #include <QPushButton>
 #include <QKeyEvent>
 #include <QMouseEvent>
+//#include <QtWidgets>
 
 #include <Camera.h>
 #include <Shader.h>
+#include <QColorRampEditor.h>
+
 
 #include <memory>
 #include <iostream>
@@ -78,6 +81,7 @@ struct WinParams
 class OpenGLWindow : public QOpenGLWidget
 {
   Q_OBJECT
+
 public:
   OpenGLWindow();
   OpenGLWindow(QWidget *_parent);
@@ -96,6 +100,17 @@ public:
   void wheelEvent(QWheelEvent *_event) override;
   
   void getIntersectionPoints(std::vector<std::vector<glm::vec3>> &array, glm::mat4 view, int slices);
+  
+  void setRampColorTable();
+  void setRampWidget(QColorRampEditor *widget);
+  void initVDB(std::string path);
+  void updateVDB(std::string path);
+public slots:
+  void fitMinValuesChanged(double min);
+  void fitMaxValuesChanged(double max);
+  void vdbPathChanged(QString path);
+  void slicesChanged(int slices);
+  void densityValuesChanged(double densityMulti);
   
 private:
   std::unique_ptr<Shader> m_shaderProgram;
@@ -118,10 +133,18 @@ private:
   WinParams m_win;
   int m_pointCount;
   GLuint m_textureId;
+  GLuint m_transferTextureId;
   GLuint m_frameBuffer;
   GLuint m_bfTexObj;
-  
+  int m_maxDim;
   int m_pop;
+  int m_slices;
+  float m_densityMulti;
+  float m_rampMin;
+  float m_rampMax;
+  
+  std::vector<float> m_ctable;
+  QColorRampEditor *m_colorWidget;
   
 };
 
