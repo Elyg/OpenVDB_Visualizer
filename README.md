@@ -2,8 +2,7 @@
 This is my personal project for OpenVDB volume visualization with openGL, Qt5
 Still work in progress. Need to fix a few bugs, clean the code, then start adding features like loading multiple grids, remapping values, ui etc.
 
-<img src="https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/vdb_visualizer.png" width="640">
-
+<img src="https://github.com/Elyg/OpenVDB_Visualizer/blob/master/demo/vdb_visulizer.png" width="640">
 
 # Library dependancies
 
