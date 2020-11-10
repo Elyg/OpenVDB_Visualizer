@@ -6,11 +6,11 @@ uniform sampler1D transfer;
 in vec3 pos;
 uniform vec3 color;
 uniform float slices;
-uniform float slice;
 uniform float maxDim;
 
 uniform float min;
 uniform float max;
+uniform float densityMulti;
 
 float fit(float value, float min1, float max1, float min2, float max2) 
 {
@@ -20,14 +20,15 @@ float fit(float value, float min1, float max1, float min2, float max2)
 
 void main()
 {
+	float density = texture(volume, pos).r;
+	float val = fit(density, min, max, 0, 1);
+	vec3 rampColor = texture(transfer, val).xyz;
 	
-	FragColor = vec4(1.0f, 0.0f, 0.0f, 0.1f);
-	FragColor = vec4(color, 1.0f);
+	float alpha = clamp(val,0, 1);
+	alpha *= densityMulti;
+	alpha *= maxDim/float(slices);
 	
-	float val = fit(pos.y, min, max, 0, 1);
-	vec4 c = texture(transfer, val);
-	//FragColor = vec4(vec3(pos.y), 1.0f);
-	//FragColor = vec4(c.r,c.y,c.b, 1.0f);
-	FragColor = c;
+	FragColor = vec4(rampColor, alpha);
+
 }
 

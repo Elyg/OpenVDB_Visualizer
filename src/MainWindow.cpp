@@ -14,7 +14,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_ui(new Ui::Main
     format.setVersion(4,3);
     format.setSamples(4);
     
-    m_ui->openGLWindow->setRampWidget(m_ui->rampWidget);
     m_ui->openGLWindow->setFormat(format);
     
     m_ui->parmLayout->setAlignment(Qt::AlignTop);
@@ -25,7 +24,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_ui(new Ui::Main
     connect(m_ui->filePath, &QLineEdit::textEdited, m_ui->openGLWindow, &OpenGLWindow::vdbPathChanged);
     connect(m_ui->slices, QOverload<int>::of(&QSpinBox::valueChanged), m_ui->openGLWindow, &OpenGLWindow::slicesChanged);
     
+    connect(m_ui->rampWidget, &QColorRampEditor::rampChanged, m_ui->openGLWindow, [&](){ m_ui->openGLWindow->rampValuesChanged(m_ui->rampWidget->getColorTable()); });
+    
     connect(m_ui->browseButton, &QPushButton::clicked, this, &MainWindow::fileBrowse);
+    
+    m_ui->rampWidget->rampChanged();
 }
 
 MainWindow::~MainWindow()

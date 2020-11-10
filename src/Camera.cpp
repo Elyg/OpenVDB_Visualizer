@@ -2,22 +2,24 @@
 
 Camera::Camera()
 {
-    //default constructor
+  this->computeViewMat();
+  this->computeProjectionMat();
 }
 Camera::Camera(glm::vec3 pos)
 {
-    m_pos = pos;
-    m_handlePos = glm::vec3(0.0f, 0.0f, 0.0f);
-    m_up = glm::vec3(0.0f, 1.0f, 0.0f);
-    this->computeViewMat();
+  m_pos = pos;
 }
-void Camera::computeProjectionMat(float aspectRatio)
+void Camera::computeProjectionMat()
 {
-    m_projection = glm::perspective(m_fov, aspectRatio, m_near, m_far);
-    //m_projection = glm::ortho(m_fov, aspectRatio, m_near, m_far);
+  m_projection = glm::perspective(m_fov, m_aspectRatio, m_near, m_far);
+  //m_projection = glm::ortho(m_fov, aspectRatio, m_near, m_far);
 }
 void Camera::computeViewMat()
 {
-    m_view = glm::lookAt(m_pos, m_handlePos, m_up);
-    //m_view = glm::inverse(m_view);
+  m_view = glm::lookAt(m_pos, m_handlePos, m_up);
+}
+void Camera::setWindowSize(uint32_t width, uint32_t height)
+{
+  m_aspectRatio = float(width)/float(height);
+  computeProjectionMat();
 }

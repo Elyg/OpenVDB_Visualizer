@@ -1,5 +1,4 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 #include <OpenGLWindow.h>
@@ -87,5 +86,3 @@ private:
   QDebugStream *m_redirect;
 };
 
-
-#endif // MAINWINDOW_H

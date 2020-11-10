@@ -8,8 +8,7 @@
 ** Free and Commercial Products.
 ****************************************************************************/
 
-#ifndef __QCOLORRAMPEDITOR_H__
-#define __QCOLORRAMPEDITOR_H__
+#pragma once
 
 #include <QWidget>
 #include <QColorDialog>
@@ -225,4 +224,4 @@ protected:
     void paintEvent(QPaintEvent* e);
 };
 
-#endif
+#pragma once

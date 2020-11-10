@@ -11,7 +11,6 @@ out vec3 pos;
 
 void main()
 {
-	//vec3 pos = vec3(position.x*10.f, position.y*0.05f, position.z*10.f);
-	pos = position+vec3(0.5,0.5,0.5);
-	gl_Position =  projection * view * model * vec4(position, 1.0f);
+	//gl_LineWidth = 2.0f;
+	gl_Position =  vec4(position, 1.0f);
 }

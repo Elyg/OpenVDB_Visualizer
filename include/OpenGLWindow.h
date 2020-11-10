@@ -1,10 +1,6 @@
-#ifndef OpenGLWindow_H
-#define OpenGLWindow_H
+#pragma once
 
-#include "VDB.h"
-
-#include <glad/glad.h>
-#include <stb_image.h>
+#include "glad/glad.h"
 
 #include <QWidget>
 #include <QOpenGLWidget>
@@ -13,11 +9,6 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 //#include <QtWidgets>
-
-#include <Camera.h>
-#include <Shader.h>
-#include <QColorRampEditor.h>
-
 
 #include <memory>
 #include <iostream>
@@ -34,49 +25,12 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/random.hpp>
 
-struct WinParams
-{
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief used to store the x rotation mouse value
-  //----------------------------------------------------------------------------------------------------------------------
-  int spinXFace = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief used to store the y rotation mouse value
-  //----------------------------------------------------------------------------------------------------------------------
-  int spinYFace = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief flag to indicate if the mouse button is pressed when dragging
-  //----------------------------------------------------------------------------------------------------------------------
-  bool rotate = false;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief flag to indicate if the Right mouse button is pressed when dragging
-  //----------------------------------------------------------------------------------------------------------------------
-  bool translate = false;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief the previous x mouse value
-  //----------------------------------------------------------------------------------------------------------------------
-  int origX = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief the previous y mouse value
-  //----------------------------------------------------------------------------------------------------------------------
-  int origY = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief the previous x mouse value for Position changes
-  //----------------------------------------------------------------------------------------------------------------------
-  int origXPos = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief the previous y mouse value for Position changes
-  //----------------------------------------------------------------------------------------------------------------------
-  int origYPos = 0;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief window width
-  //----------------------------------------------------------------------------------------------------------------------
-  int width = 1024;
-  //----------------------------------------------------------------------------------------------------------------------
-  /// @brief window height
-  //----------------------------------------------------------------------------------------------------------------------
-  int height = 720;
-};
+#include "Camera.h"
+#include "Shader.h"
+#include "QColorRampEditor.h"
+#include "OpenGLWindowParms.h"
+#include "VDBPrim.h"
+
 
 class OpenGLWindow : public QOpenGLWidget
 {
@@ -93,51 +47,45 @@ public:
   void timerEvent(QTimerEvent *_event) override;
   void keyPressEvent(QKeyEvent *_event) override;
   void mouseMoveEvent(QMouseEvent *_event) override;
-  void initFrameBuffer(GLuint texObj, GLuint texWidth, GLuint texHeight);
-  GLuint initFace2DTex(GLuint bfTexWidth, GLuint bfTexHeight);
   void mousePressEvent(QMouseEvent *_event) override;
   void mouseReleaseEvent(QMouseEvent *_event) override;
   void wheelEvent(QWheelEvent *_event) override;
   
   void getIntersectionPoints(std::vector<std::vector<glm::vec3>> &array, glm::mat4 view, int slices);
   
-  void setRampColorTable();
+
   void setRampWidget(QColorRampEditor *widget);
-  void initVDB(std::string path);
   void updateVDB(std::string path);
+  
 public slots:
   void fitMinValuesChanged(double min);
   void fitMaxValuesChanged(double max);
   void vdbPathChanged(QString path);
   void slicesChanged(int slices);
   void densityValuesChanged(double densityMulti);
+  void rampValuesChanged(const std::vector<float> &_colors);
+  void setRampColorTable();
   
 private:
-  std::unique_ptr<Shader> m_shaderProgram;
-  std::unique_ptr<Shader> m_shaderProgram2;
-  std::unique_ptr<Shader> m_shaderProgram3;
-  bool m_wireframe = false;
-  unsigned int m_VAO;
-  unsigned int m_VBO;
-  unsigned int m_texture1;
-  Camera *m_camera;
+  
+  std::unique_ptr<VDBPrim> m_vdb;
+  std::unique_ptr<Camera> m_camera;
+  std::unique_ptr<Shader> m_shaderProxy;
+  std::unique_ptr<Shader> m_shaderVolume;
+  std::unique_ptr<Shader> m_shaderBBox;
   glm::mat4 m_projection;
   glm::mat4 m_view;
   glm::mat4 m_model;
-  glm::vec2 m_viewportSize;
-  float m_aspectRatio;
   glm::vec3 m_min;
   glm::vec3 m_max;
+  uint32_t m_VAO;
+  uint32_t m_VBO;
+
   glm::vec3 m_mousePos;
-  
-  WinParams m_win;
-  int m_pointCount;
-  GLuint m_textureId;
-  GLuint m_transferTextureId;
-  GLuint m_frameBuffer;
-  GLuint m_bfTexObj;
+  OpenGLWindowParms m_win;
+ 
+  bool m_wireframe = false;
   int m_maxDim;
-  int m_pop;
   int m_slices;
   float m_densityMulti;
   float m_rampMin;
@@ -145,7 +93,5 @@ private:
   
   std::vector<float> m_ctable;
   QColorRampEditor *m_colorWidget;
-  
+  GLuint m_transferTextureId;
 };
-
-#endif // OpenGLWindow_H
